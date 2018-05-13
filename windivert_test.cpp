@@ -2,20 +2,15 @@
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
-#include <cstdint>
 #include "windivert.h"
+#include "win32\libnet.h"
 
-void dump(u_char *p, size_t len)
-{
-	for (size_t i = 0; i < len; i++) {
-		printf("%02x ", p[i]);
-	}
-	printf("\n");
-}
+#define MAXBUF  0xFFFF
 
 int main() {
-	u_char packet[255];
+	u_char packet[MAXBUF];
 	WINDIVERT_ADDRESS addr;
 	uint32_t packet_len;
 
@@ -27,16 +22,15 @@ int main() {
 			continue;
 		}
 		
-		PWINDIVERT_IPHDR IP = (PWINDIVERT_IPHDR)packet;
+		struct libnet_ipv4_hdr* ipH = (struct libnet_ipv4_hdr *)packet;
 
-		if (IP->Protocol == 06) {
+		if (ipH->ip_p == 6) {
 			u_char* packet_p = &packet[0];
-			packet_p += sizeof(WINDIVERT_IPHDR);
-			PWINDIVERT_TCPHDR TCP = (PWINDIVERT_TCPHDR)packet_p;
+			packet_p += (ipH->ip_hl * 4);
+			struct libnet_tcp_hdr* tcpH = (struct libnet_tcp_hdr *)packet_p;
 
-			if ((ntohs(TCP->SrcPort) == 80) || (ntohs(TCP->DstPort) == 80)) {
+			if ((ntohs(tcpH->th_sport) == 80) || (ntohs(tcpH->th_dport) == 80)) {
 				printf("************* TCP Port 80 block **************\n");
-//				printf("SrcPort = %04x \t DstPort = %04x \n\n", ntohs(TCP->SrcPort), ntohs(TCP->DstPort));
 				continue;
 			}
 		}
